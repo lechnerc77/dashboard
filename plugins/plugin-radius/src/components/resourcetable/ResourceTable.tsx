@@ -5,6 +5,7 @@ import {
   ResponseErrorPanel,
   Table,
   TableColumn,
+  TableFilter,
 } from '@backstage/core-components';
 import {
   OptionalResourceLink,
@@ -18,7 +19,6 @@ import { parseResourceId } from '@radapp.io/rad-components';
 const DataTable = (props: {
   resources: Resource[];
   title: string;
-  filters?: { environment?: string; application?: string };
   resourceType?: string;
 }) => {
   const columns: TableColumn<Resource>[] = [
@@ -26,11 +26,13 @@ const DataTable = (props: {
       title: 'Name',
       type: 'string',
       render: row => <ResourceLink id={row.id} />,
+      field: 'id',
     },
     {
       title: 'Resource Group',
       type: 'string',
       render: row => parseResourceId(row.id)?.group,
+      field: 'group',
     },
     { title: 'Type', field: 'type', type: 'string' },
   ];
@@ -68,42 +70,34 @@ const DataTable = (props: {
 
   columns.push({ title: 'Status', field: 'properties.provisioningState' });
 
-  const data = props.resources.filter(resource => {
-    // If the id equals the filter, then exclude it. 'resource.id' will always be a string.
-    if (
-      props.filters?.environment?.toLowerCase() === resource.id.toLowerCase()
-    ) {
-      return false;
-    } else if (
-      props.filters?.application?.toLowerCase() === resource.id.toLowerCase()
-    ) {
-      return false;
-    }
+  const data = props.resources;
 
-    const application = resource.properties?.application as string;
-    const environment = resource.properties?.environment as string;
-    if (
-      props.filters?.environment &&
-      environment?.toLowerCase() !== props.filters.environment.toLowerCase()
-    ) {
-      return false;
-    }
-    if (
-      props.filters?.application &&
-      application?.toLowerCase() !== props.filters.application.toLowerCase()
-    ) {
-      return false;
-    }
-
-    return true;
-  });
+  const filters: TableFilter[] = [
+    {
+      column: 'Name',
+      type: 'multiple-select',
+    },
+    {
+      column: 'Resource Group',
+      type: 'multiple-select',
+    },
+    {
+      column: 'Type',
+      type: 'multiple-select',
+    },
+    {
+      column: 'Status',
+      type: 'multiple-select',
+    },
+  ];
 
   return (
     <Table
       title={props.title}
-      options={{ search: false, paging: false }}
+      options={{ search: true, paging: false }}
       columns={columns}
       data={data}
+      filters={filters}
     />
   );
 };
@@ -111,8 +105,7 @@ const DataTable = (props: {
 export const ResourceTable = (props: {
   title: string;
   resourceType?: string;
-  filters?: { environment?: string; application?: string };
-}) => {
+  }) => {
   const radiusApi = useApi(radiusApiRef);
   const { value, loading, error } = useAsync(
     async (): Promise<ResourceList<{ [key: string]: unknown }>> => {
@@ -128,11 +121,12 @@ export const ResourceTable = (props: {
     return <ResponseErrorPanel error={error} />;
   }
 
+
+
   return (
     <DataTable
       resources={value?.value || []}
       title={props.title}
-      filters={props.filters}
       resourceType={props.resourceType}
     />
   );
